@@ -19,23 +19,42 @@ export function defaultAsk(): Ask | null {
   const aKey = process.env.ANTHROPIC_API_KEY;
   if (gKey && process.env.AI_PROVIDER !== "anthropic") {
     return async (system, user, maxTokens) => {
-      const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-      // Google đôi lúc báo 503/429 (quá tải): thử lại vài lần với thời gian chờ tăng dần
+      const primary = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+      const fallback = process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash";
+      const budget = Number(process.env.AI_TIMEOUT_MS) || 60_000;
+      const deadline = Date.now() + budget - 5_000;
+      // Google đôi lúc báo 503/429 (quá tải) hoặc treo kết nối: mỗi lần gọi có timeout riêng,
+      // thử lại nhiều lần với thời gian chờ tăng dần, hai lần đầu dùng model chính rồi đổi sang model dự phòng.
       let res: Response | null = null;
-      for (let attempt = 0; attempt < 4; attempt++) {
-        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-          method: "POST",
-          headers: { "content-type": "application/json", "x-goog-api-key": gKey },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: system }] },
-            contents: [{ role: "user", parts: [{ text: user }] }],
-            generationConfig: { maxOutputTokens: maxTokens, temperature: 0.9 },
-          }),
-        });
+      let lastErr = "";
+      for (let attempt = 0; attempt < 6 && Date.now() < deadline; attempt++) {
+        const model = attempt < 2 || fallback === primary ? primary : fallback;
+        const left = deadline - Date.now();
+        try {
+          res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+            method: "POST",
+            headers: { "content-type": "application/json", "x-goog-api-key": gKey },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: system }] },
+              contents: [{ role: "user", parts: [{ text: user }] }],
+              generationConfig: { maxOutputTokens: maxTokens, temperature: 0.9 },
+            }),
+            signal: AbortSignal.timeout(Math.max(5_000, Math.min(55_000, left))),
+          });
+        } catch (e) {
+          res = null;
+          lastErr = `${model}: ${e instanceof Error ? e.message : e}`;
+          console.error(`[gemini] lần ${attempt + 1} lỗi mạng/timeout (${lastErr})`);
+          await new Promise((r) => setTimeout(r, 2000 + Math.random() * 1500));
+          continue;
+        }
         if (res.ok || ![429, 500, 503].includes(res.status)) break;
-        await new Promise((r) => setTimeout(r, 4000 * 2 ** attempt + Math.random() * 1500));
+        lastErr = `${model} ${res.status}`;
+        console.error(`[gemini] lần ${attempt + 1}: ${lastErr}, thử lại`);
+        await new Promise((r) => setTimeout(r, 3000 * (attempt + 1) + Math.random() * 1500));
       }
-      if (!res || !res.ok) throw new Error(`Gemini ${res?.status}: ${((await res?.text()) ?? "").slice(0, 200)}`);
+      if (!res) throw new Error(`Gemini không phản hồi (${lastErr || "hết thời gian"})`);
+      if (!res.ok) throw new Error(`Gemini ${res.status}: ${((await res.text()) ?? "").slice(0, 200)}`);
       const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
       return (data.candidates?.[0]?.content?.parts ?? []).map((x) => x.text ?? "").join("").trim();
     };
@@ -202,10 +221,14 @@ export async function aiShortCandidates(ask: Ask, ctx: Ctx, levels: number[]): P
   const avoid = [...ctx.recentAnswers].slice(-60);
   const chunks: Slot[][] = [];
   for (let i = 0; i < slots.length; i += 7) chunks.push(slots.slice(i, i + 7));
-  const results = await Promise.all(chunks.map((c, k) => askShorts(ask, c, avoid, k * 7).catch((err) => {
-    console.error("[generate] AI ra đề lỗi:", err instanceof Error ? err.message : err);
-    return [] as Cand[];
-  })));
+  const results: Cand[][] = [];
+  // chỉ chạy tối đa 2 yêu cầu song song để Gemini ít bị quá tải
+  for (let i = 0; i < chunks.length; i += 2) {
+    results.push(...(await Promise.all(chunks.slice(i, i + 2).map((c, k) => askShorts(ask, c, avoid, (i + k) * 7).catch((err) => {
+      console.error("[generate] AI ra đề lỗi:", err instanceof Error ? err.message : err);
+      return [] as Cand[];
+    })))));
+  }
   let cands = results.flat();
   // loại trùng lịch sử và trùng nhau
   const seenNow = new Set<string>();
