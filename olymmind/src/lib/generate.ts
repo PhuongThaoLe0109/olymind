@@ -20,16 +20,22 @@ export function defaultAsk(): Ask | null {
   if (gKey && process.env.AI_PROVIDER !== "anthropic") {
     return async (system, user, maxTokens) => {
       const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-goog-api-key": gKey },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: system }] },
-          contents: [{ role: "user", parts: [{ text: user }] }],
-          generationConfig: { maxOutputTokens: maxTokens, temperature: 0.9 },
-        }),
-      });
-      if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      // Google đôi lúc báo 503/429 (quá tải): thử lại vài lần với thời gian chờ tăng dần
+      let res: Response | null = null;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-goog-api-key": gKey },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: system }] },
+            contents: [{ role: "user", parts: [{ text: user }] }],
+            generationConfig: { maxOutputTokens: maxTokens, temperature: 0.9 },
+          }),
+        });
+        if (res.ok || ![429, 500, 503].includes(res.status)) break;
+        await new Promise((r) => setTimeout(r, 4000 * 2 ** attempt + Math.random() * 1500));
+      }
+      if (!res || !res.ok) throw new Error(`Gemini ${res?.status}: ${((await res?.text()) ?? "").slice(0, 200)}`);
       const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
       return (data.candidates?.[0]?.content?.parts ?? []).map((x) => x.text ?? "").join("").trim();
     };
@@ -137,7 +143,7 @@ async function askShorts(ask: Ask, slots: Slot[], avoid: string[], offset: numbe
         `[{"i": 1, "content": "câu hỏi", "answer": "đáp án chuẩn (1-4 từ hoặc một số)", "acceptedAnswers": ["cách viết khác"], "explanation": "giải thích 1-2 câu", "trivia": "thông tin mở rộng ngắn"}]`,
       4096,
     ),
-    60_000,
+    (Number(process.env.AI_TIMEOUT_MS) || 60_000),
   );
   const arr = extractJson(text, "[") as unknown[];
   const out: Cand[] = [];
@@ -172,7 +178,7 @@ async function crossCheck(ask: Ask, items: { content: string; answer: string; ac
           `\nTrả về mảng JSON: [{"i": 0, "answer": "...", "sure": true}]`,
         4096,
       ),
-      60_000,
+      (Number(process.env.AI_TIMEOUT_MS) || 60_000),
     );
     const arr = extractJson(text, "[") as { i?: number; answer?: unknown; sure?: unknown }[];
     const ok = new Set<number>();
@@ -232,7 +238,7 @@ async function aiCnv(ask: Ask, ctx: Ctx): Promise<CnvPuzzle | null> {
         `Trả về MỘT đối tượng JSON: {"keyword","centerClue","explanation","rows":[{"category":"toan|ly|hoa|sinh|su|dia|van|anh|gdcd|tin|nghe-thuat|the-thao|chung","clue","answer","acceptedAnswers":[],"reveals":[số],"explanation"} x4]}`,
       3000,
     ),
-    60_000,
+    (Number(process.env.AI_TIMEOUT_MS) || 60_000),
   );
   const v = extractJson(text, "{") as Record<string, any>;
   const keyword = str(v.keyword, 4, 40), centerClue = str(v.centerClue, 8), explanation = str(v.explanation, 4);
