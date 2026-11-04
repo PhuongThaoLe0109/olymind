@@ -48,7 +48,8 @@ export function defaultAsk(): Ask | null {
         }
         if (res.ok || ![429, 500, 503].includes(res.status)) break;
         lastErr = `${model} ${res.status}`;
-        console.error(`[gemini] lần ${attempt + 1}: ${lastErr}, thử lại`);
+        const body = (await res.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 400);
+        console.error(`[gemini] lần ${attempt + 1}: ${lastErr} ${body}`);
         await new Promise((r) => setTimeout(r, Math.min(20_000, 4000 * (attempt + 1)) + Math.random() * 2500));
       }
       if (!res) throw new Error(`Gemini không phản hồi (${lastErr || "hết thời gian"})`);
