@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 64" width="260" height="64" role="img" aria-label="OlymMind">
+  <!-- Biến thể cho nền sáng -->
+  <g>
+    <rect width="64" height="64" rx="14" fill="#0F172A"/>
+    <g id="laurel-left" fill="#F59E0B">
+      <ellipse cx="26.8" cy="53.3" rx="2.2" ry="5" transform="rotate(105 26.8 53.3)"/>
+      <ellipse cx="20.5" cy="50.4" rx="2.2" ry="5" transform="rotate(125 20.5 50.4)"/>
+      <ellipse cx="15.6" cy="45.5" rx="2.2" ry="5" transform="rotate(145 15.6 45.5)"/>
+      <ellipse cx="12.7" cy="39.2" rx="2.2" ry="5" transform="rotate(165 12.7 39.2)"/>
+      <ellipse cx="12.1" cy="32.3" rx="2.2" ry="5" transform="rotate(185 12.1 32.3)"/>
+      <ellipse cx="13.9" cy="25.5" rx="2.2" ry="5" transform="rotate(205 13.9 25.5)"/>
+    </g>
+    <use href="#laurel-left" transform="translate(64 0) scale(-1 1)"/>
+    <polygon points="32,19 45,44 19,44" fill="#F59E0B"/>
+    <polygon points="32,19 38,31 35,29 32,33 29,29 26,31" fill="#FCD34D"/>
+    <polygon points="35,24 28,37 32.5,37 30,48 39,33 34,33" fill="#EF4444" stroke="#0F172A" stroke-width="1" stroke-linejoin="round"/>
+  </g>
+  <text x="80" y="42" font-family="'Be Vietnam Pro', 'Segoe UI', system-ui, sans-serif" font-size="32" font-weight="800" letter-spacing="-0.5">
+    <tspan fill="#0F172A">Olym</tspan><tspan fill="#B45309">Mind</tspan>
+  </text>
+</svg>

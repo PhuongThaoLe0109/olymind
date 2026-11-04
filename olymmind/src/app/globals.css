@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Giao diện sân khấu cố định: nền tím đậm, chữ vàng gradient, tấm nội dung vát góc viền vàng. */
+:root {
+  color-scheme: dark;
+  --goldtext: linear-gradient(180deg, #ffe9a8 0%, #f2be48 55%, #b7791f 100%);
+}
+
+body {
+  @apply bg-ink text-paper antialiased;
+}
+
+h1,
+h2 {
+  background: var(--goldtext);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
+  text-wrap: balance;
+}
+
+@layer components {
+  .card {
+    @apply relative p-5 backdrop-blur-sm;
+    background: rgba(32, 8, 42, 0.66);
+    box-shadow: inset 0 0 0 1.5px rgba(242, 190, 72, 0.55);
+    clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+  }
+  .card.\!p-3 {
+    clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 10px 100%);
+    background: linear-gradient(180deg, rgba(60, 16, 70, 0.85), rgba(24, 6, 34, 0.92));
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 font-bold transition focus:outline-none
+      focus-visible:ring-2 focus-visible:ring-gold-light disabled:cursor-not-allowed disabled:opacity-40;
+    clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  }
+  .btn-gold {
+    background: var(--goldtext);
+    color: #3a1a00;
+  }
+  .btn-gold:hover {
+    filter: brightness(1.1);
+  }
+  .btn-ghost {
+    @apply bg-white/10 text-paper hover:bg-white/20;
+  }
+  .input {
+    @apply w-full rounded border border-gold/45 bg-black/40 px-4 py-2.5 text-paper outline-none placeholder:text-paper/40
+      focus:border-gold-light focus:ring-2 focus:ring-gold/40;
+  }
+  .chip {
+    @apply inline-flex items-center rounded-full border border-gold/35 px-3 py-0.5 text-xs font-semibold text-gold-light;
+  }
+}
+
+/* Trang cũ dùng màu navy cho chữ phụ; trên nền tối đổi sang kem mờ. */
+.text-navy\/60,
+.text-navy\/70,
+.text-navy\/50 {
+  color: rgba(255, 244, 214, 0.65);
+}
+.bg-navy\/5,
+.bg-navy\/10 {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
+/* ---- Hiệu ứng ăn mừng và cộng điểm ---- */
+@keyframes floatUp {
+  0% { opacity: 0; transform: translateY(10px) scale(0.8); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-46px) scale(1.3); }
+}
+@keyframes popNum {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.4); color: #ffe9a8; text-shadow: 0 0 18px rgba(242, 190, 72, 0.9); }
+  100% { transform: scale(1); }
+}
+@keyframes leafIn {
+  from { opacity: 0; transform: scale(0) rotate(-30deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes trophyIn {
+  0% { opacity: 0; transform: translateY(60px) scale(0.3) rotate(-10deg); }
+  60% { opacity: 1; transform: translateY(-10px) scale(1.12) rotate(2deg); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes confettiFall {
+  0% { transform: translateY(-8vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(112vh) rotate(760deg); opacity: 0.9; }
+}
+@keyframes shineSweep {
+  0% { transform: translateX(0) skewX(-18deg); }
+  100% { transform: translateX(520px) skewX(-18deg); }
+}
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.anim-float { animation: floatUp 1.3s ease-out forwards; }
+.anim-pop { animation: popNum 0.6s ease-out; }
+.anim-leaf { opacity: 0; animation: leafIn 0.45s cubic-bezier(0.2, 1.3, 0.4, 1) forwards; }
+.anim-trophy { opacity: 0; animation: trophyIn 0.9s 0.5s cubic-bezier(0.2, 1, 0.3, 1) forwards; }
+.anim-confetti { animation: confettiFall linear infinite; }
+.anim-shine { animation: shineSweep 1.6s 1.6s ease-in-out infinite; }
+.anim-rise { opacity: 0; animation: riseIn 0.6s 0.9s ease-out forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .anim-float, .anim-pop, .anim-confetti, .anim-shine { animation: none; }
+  .anim-leaf, .anim-trophy, .anim-rise { animation-duration: 0.01s; animation-delay: 0s; }
+}
