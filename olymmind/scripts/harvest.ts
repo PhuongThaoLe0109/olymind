@@ -61,5 +61,11 @@ if (process.argv[1]?.endsWith("harvest.ts")) {
   }
   const count = Number(process.env.HARVEST_COUNT) || 28;
   const dailyMax = Number(process.env.HARVEST_DAILY_MAX) || 400;
-  harvest(ask, { count, dailyMax }).then((r) => console.log("harvest:", JSON.stringify(r)), (e) => { console.error(e); process.exit(1); });
+  harvest(ask, { count, dailyMax }).then((r) => {
+    console.log("harvest:", JSON.stringify(r));
+    if ("asked" in r && r.asked === 0) {
+      console.error("AI không trả về câu nào hợp lệ, xem lỗi phía trên (key, tên model, hạn mức).");
+      process.exit(1);
+    }
+  }, (e) => { console.error(e); process.exit(1); });
 }
