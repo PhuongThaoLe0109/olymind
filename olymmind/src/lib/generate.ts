@@ -19,16 +19,14 @@ export function defaultAsk(): Ask | null {
   const aKey = process.env.ANTHROPIC_API_KEY;
   if (gKey && process.env.AI_PROVIDER !== "anthropic") {
     return async (system, user, maxTokens) => {
-      const primary = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-      const fallback = process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash";
+      const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
       const budget = Number(process.env.AI_TIMEOUT_MS) || 60_000;
       const deadline = Date.now() + budget - 5_000;
       // Google đôi lúc báo 503/429 (quá tải) hoặc treo kết nối: mỗi lần gọi có timeout riêng,
-      // thử lại nhiều lần với thời gian chờ tăng dần, hai lần đầu dùng model chính rồi đổi sang model dự phòng.
+      // thử lại nhiều lần với thời gian chờ tăng dần.
       let res: Response | null = null;
       let lastErr = "";
-      for (let attempt = 0; attempt < 6 && Date.now() < deadline; attempt++) {
-        const model = attempt < 2 || fallback === primary ? primary : fallback;
+      for (let attempt = 0; attempt < 10 && Date.now() < deadline; attempt++) {
         const left = deadline - Date.now();
         try {
           res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -51,7 +49,7 @@ export function defaultAsk(): Ask | null {
         if (res.ok || ![429, 500, 503].includes(res.status)) break;
         lastErr = `${model} ${res.status}`;
         console.error(`[gemini] lần ${attempt + 1}: ${lastErr}, thử lại`);
-        await new Promise((r) => setTimeout(r, 3000 * (attempt + 1) + Math.random() * 1500));
+        await new Promise((r) => setTimeout(r, Math.min(20_000, 4000 * (attempt + 1)) + Math.random() * 2500));
       }
       if (!res) throw new Error(`Gemini không phản hồi (${lastErr || "hết thời gian"})`);
       if (!res.ok) throw new Error(`Gemini ${res.status}: ${((await res.text()) ?? "").slice(0, 200)}`);
