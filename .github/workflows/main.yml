@@ -28,6 +28,7 @@ jobs:
       - name: Sinh và đối chiếu câu mới
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-3.8-flash
           HARVEST_COUNT: "28"
           HARVEST_DAILY_MAX: "400"
         run: npx tsx scripts/harvest.ts
