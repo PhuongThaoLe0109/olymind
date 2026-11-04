@@ -29,6 +29,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.8-flash
+          AI_TIMEOUT_MS: "170000"
           HARVEST_COUNT: "28"
           HARVEST_DAILY_MAX: "400"
         run: npx tsx scripts/harvest.ts
