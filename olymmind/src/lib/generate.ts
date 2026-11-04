@@ -26,7 +26,7 @@ export function defaultAsk(): Ask | null {
       // thử lại nhiều lần với thời gian chờ tăng dần.
       let res: Response | null = null;
       let lastErr = "";
-      for (let attempt = 0; attempt < 10 && Date.now() < deadline; attempt++) {
+      for (let attempt = 0; attempt < 4 && Date.now() < deadline; attempt++) {
         const left = deadline - Date.now();
         try {
           res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -50,6 +50,11 @@ export function defaultAsk(): Ask | null {
         lastErr = `${model} ${res.status}`;
         const body = (await res.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 400);
         console.error(`[gemini] lần ${attempt + 1}: ${lastErr} ${body}`);
+        // hết hạn mức (quota) thì thử lại chỉ tốn thêm lượt, dừng ngay
+        if (res.status === 429 && /quota/i.test(body)) {
+          (globalThis as any).__geminiQuotaHit = true;
+          throw new Error("Gemini hết hạn mức (quota) của key, thử lại sau khi quota được làm mới hoặc bật billing");
+        }
         await new Promise((r) => setTimeout(r, Math.min(20_000, 4000 * (attempt + 1)) + Math.random() * 2500));
       }
       if (!res) throw new Error(`Gemini không phản hồi (${lastErr || "hết thời gian"})`);

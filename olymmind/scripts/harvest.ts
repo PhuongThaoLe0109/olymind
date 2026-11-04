@@ -63,6 +63,10 @@ if (process.argv[1]?.endsWith("harvest.ts")) {
   const dailyMax = Number(process.env.HARVEST_DAILY_MAX) || 400;
   harvest(ask, { count, dailyMax }).then((r) => {
     console.log("harvest:", JSON.stringify(r));
+    if ("asked" in r && r.asked === 0 && (globalThis as any).__geminiQuotaHit) {
+      console.warn("Key Gemini đã hết hạn mức (quota), bỏ qua lượt này, không tính là lỗi. Lượt sau sẽ thử lại.");
+      return;
+    }
     if ("asked" in r && r.asked === 0) {
       console.error("AI không trả về câu nào hợp lệ, xem lỗi phía trên (key, tên model, hạn mức).");
       process.exit(1);
